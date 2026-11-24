@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Phiếu Cân Gà - Mau Can Ga</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --primary: #1976d2;
+      --primary-dark: #0d47a1;
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --text: #212121;
+      --border: #cfd8dc;
+      --yellow: #fff9c4;
+      --accent: #2e7d32;
+    }
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { margin: 0; padding: 12px; background: var(--bg); color: var(--text); font-size: 14px; }
+    h1 { font-size: 18px; text-align: center; margin: 6px 0 14px; color: var(--primary-dark); }
+    .card { background: var(--card); border-radius: 8px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+    label { font-size: 11px; font-weight: bold; color: #555; display: block; margin-bottom: 2px; }
+    input { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; }
+    input:focus { outline: 2px solid var(--primary); }
+    .input-yellow { background-color: var(--yellow); }
+
+    /* Summary Dashboard */
+    .dashboard { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+    @media (min-width: 600px) { .dashboard { grid-template-columns: repeat(4, 1fr); } }
+    .stat-box { background: #e3f2fd; padding: 8px; border-radius: 6px; border-left: 4px solid var(--primary); }
+    .stat-box.highlight { background: #e8f5e9; border-left-color: var(--accent); }
+    .stat-title { font-size: 11px; color: #555; }
+    .stat-value { font-size: 15px; font-weight: bold; color: #111; margin-top: 2px; }
+
+    /* Table styles */
+    .table-container { overflow-x: auto; margin-top: 6px; }
+    table { width: 100%; border-collapse: collapse; text-align: center; }
+    th, td { border: 1px solid var(--border); padding: 5px 3px; font-size: 13px; }
+    th { background: #eceff1; color: #37474f; font-weight: 600; }
+    td input { border: none; text-align: center; padding: 6px 2px; border-radius: 0; background: transparent; font-size: 14px; }
+    td input:focus { background: #fffde7; }
+    .col-stt { width: 36px; background: #fafafa; font-weight: 600; }
+
+    /* Buttons */
+    .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+    button { flex: 1; padding: 10px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-success { background: var(--accent); color: #fff; }
+    .btn-danger { background: #d32f2f; color: #fff; }
+  </style>
+</head>
+<body>
+
+  <h1>HỆ THỐNG CÂN GÀ - XUẤT BÁN</h1>
+
+  <!-- Thông tin lô hàng -->
+  <div class="card">
+    <div class="grid-3">
+      <div>
+        <label>Ngày cân</label>
+        <input type="date" id="txtNgay" class="input-yellow">
+      </div>
+      <div>
+        <label>Khách hàng</label>
+        <input type="text" id="txtKhachHang" placeholder="Tên đối tác..." class="input-yellow">
+      </div>
+      <div>
+        <label>Số xe</label>
+        <input type="text" id="txtSoXe" placeholder="Biển số..." class="input-yellow">
+      </div>
+    </div>
+  </div>
+
+  <!-- Thống kê tổng hợp -->
+  <div class="card">
+    <div class="dashboard">
+      <div class="stat-box">
+        <div class="stat-title">Tổng số lồng (bì)</div>
+        <div class="stat-value" id="resTongLongBi">0 Cái</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-title">TB 1 lồng</div>
+        <div class="stat-value" id="resTBLong">0.00 kg</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-title">Tổng Lồng + Gà</div>
+        <div class="stat-value" id="resTongCan">0.0 kg</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-title">Số mã đã cân</div>
+        <div class="stat-value" id="resSoMaCan">0 mã</div>
+      </div>
+      <div class="stat-box highlight">
+        <div class="stat-title">Tổng số con</div>
+        <div class="stat-value" id="resTongCon">0 con</div>
+      </div>
+      <div class="stat-box highlight">
+        <div class="stat-title">Tổng trọng lượng gà</div>
+        <div class="stat-value" id="resTongTLGa" style="color: #b71c1c;">0.0 kg</div>
+      </div>
+      <div class="stat-box highlight" style="grid-column: span 2;">
+        <div class="stat-title">Bình quân / con</div>
+        <div class="stat-value" id="resTBCon" style="color: #1565c0; font-size: 18px;">0.000 kg/con</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bảng Cân Lồng Không -->
+  <div class="card">
+    <div style="font-weight: bold; margin-bottom: 6px; color: #0d47a1;">1. CÂN LỒNG KHÔNG (BÌ)</div>
+    <div class="table-container">
+      <table id="tblLong">
+        <thead>
+          <tr>
+            <th class="col-stt">STT</th>
+            <th>TL Lồng × 0.1</th>
+            <th>Số Lồng</th>
+            <th>Thực tế (kg)</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="addRowLong()">+ Thêm dòng bì</button>
+    </div>
+  </div>
+
+  <!-- Bảng Cân Gà -->
+  <div class="card">
+    <div style="font-weight: bold; margin-bottom: 6px; color: #2e7d32;">2. CÂN GÀ (CẢ LỒNG + GÀ)</div>
+    <div class="table-container">
+      <table id="tblGa">
+        <thead>
+          <tr>
+            <th class="col-stt">STT</th>
+            <th>Số Cân × 0.1</th>
+            <th>Số Lồng</th>
+            <th>Số Con</th>
+            <th>TL Gà (kg)</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="addRowGa()">+ Thêm 5 dòng cân</button>
+      <button class="btn-success" onclick="xuatExcel()">📥 Xuất File Excel</button>
+      <button class="btn-danger" onclick="xoaTatCa()" style="flex: 0.5;">Xóa hết</button>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('txtNgay').valueAsDate = new Date();
+
+    // Khởi tạo dòng ban đầu
+    function initData() {
+      for (let i = 0; i < 5; i++) addRowLong();
+      for (let i = 0; i < 15; i++) addRowGa();
+    }
+
+    function addRowLong() {
+      const tbody = document.querySelector('#tblLong tbody');
+      const stt = tbody.rows.length + 1;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="col-stt">${stt}</td>
+        <td><input type="number" step="any" class="input-yellow input-tl-long" oninput="tinhToan()" placeholder="vd: 75"></td>
+        <td><input type="number" step="any" class="input-sl-long" oninput="tinhToan()" placeholder="vd: 10"></td>
+        <td class="cell-tt-long" style="font-weight: 500;">0.0</td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    function addRowGa(count = 1) {
+      const tbody = document.querySelector('#tblGa tbody');
+      for(let k = 0; k < count; k++) {
+        const stt = tbody.rows.length + 1;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="col-stt">${stt}</td>
+          <td><input type="number" step="any" class="input-yellow input-so-can" oninput="tinhToan()" placeholder="vd: 250"></td>
+          <td><input type="number" step="any" class="input-sl-long-ga" oninput="tinhToan()" placeholder="vd: 2"></td>
+          <td><input type="number" step="any" class="input-sl-con" oninput="tinhToan()" placeholder="vd: 8"></td>
+          <td class="cell-tl-ga" style="font-weight: 600; color: #b71c1c;">0.0</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    function tinhToan() {
+      // 1. Tính cân bì lồng
+      let tongSoLongBi = 0;
+      let tongKGLongBi = 0;
+
+      const rowsLong = document.querySelectorAll('#tblLong tbody tr');
+      rowsLong.forEach(row => {
+        const valCan = parseFloat(row.querySelector('.input-tl-long').value) || 0;
+        const valSL = parseFloat(row.querySelector('.input-sl-long').value) || 0;
+        const kgThuc = (valCan * 0.1);
+        row.querySelector('.cell-tt-long').innerText = kgThuc > 0 ? kgThuc.toFixed(2) : '0.0';
+        if (valSL > 0 && kgThuc > 0) {
+          tongSoLongBi += valSL;
+          tongKGLongBi += kgThuc;
+        }
+      });
+
+      const tbLong = tongSoLongBi > 0 ? (tongKGLongBi / tongSoLongBi) : 0;
+      document.getElementById('resTongLongBi').innerText = tongSoLongBi + " Cái";
+      document.getElementById('resTBLong').innerText = tbLong.toFixed(3) + " kg";
+
+      // 2. Tính cân gà
+      let tongCanTong = 0;
+      let tongCon = 0;
+      let tongTLGa = 0;
+      let soMaCan = 0;
+
+      const rowsGa = document.querySelectorAll('#tblGa tbody tr');
+      rowsGa.forEach(row => {
+        const valCan = parseFloat(row.querySelector('.input-so-can').value) || 0;
+        const valSLLong = parseFloat(row.querySelector('.input-sl-long-ga').value) || 0;
+        const valCon = parseFloat(row.querySelector('.input-sl-con').value) || 0;
+
+        if (valCan > 0) {
+          soMaCan++;
+          const kgTongMa = valCan * 0.1;
+          const biMa = valSLLong * tbLong;
+          const tlGa = Math.max(0, kgTongMa - biMa);
+
+          row.querySelector('.cell-tl-ga').innerText = tlGa.toFixed(2);
+
+          tongCanTong += kgTongMa;
+          tongCon += valCon;
+          tongTLGa += tlGa;
+        } else {
+          row.querySelector('.cell-tl-ga').innerText = '0.0';
+        }
+      });
+
+      const tbCon = tongCon > 0 ? (tongTLGa / tongCon) : 0;
+
+      document.getElementById('resTongCan').innerText = tongCanTong.toFixed(1) + " kg";
+      document.getElementById('resSoMaCan').innerText = soMaCan + " mã";
+      document.getElementById('resTongCon').innerText = tongCon + " con";
+      document.getElementById('resTongTLGa').innerText = tongTLGa.toFixed(2) + " kg";
+      document.getElementById('resTBCon').innerText = tbCon.toFixed(3) + " kg/con";
+    }
+
+    function xuatExcel() {
+      const data = [
+        ["PHIẾU CÂN GÀ XUẤT BÁN", "", "", "", "", ""],
+        ["Ngày:", document.getElementById('txtNgay').value, "", "Tổng lồng bì:", document.getElementById('resTongLongBi').innerText],
+        ["Khách hàng:", document.getElementById('txtKhachHang').value, "", "TB 1 lồng:", document.getElementById('resTBLong').innerText],
+        ["Số xe:", document.getElementById('txtSoXe').value, "", "Tổng Lồng + Gà:", document.getElementById('resTongCan').innerText],
+        ["Số mã đã cân:", document.getElementById('resSoMaCan').innerText, "", "Tổng số con:", document.getElementById('resTongCon').innerText],
+        ["Tổng TL Gà (kg):", document.getElementById('resTongTLGa').innerText, "", "Bình quân (kg/con):", document.getElementById('resTBCon').innerText],
+        [],
+        ["STT", "Số Cân x 0.1", "Số Lồng", "Số Con", "TL Gà (kg)"]
+      ];
+
+      const rowsGa = document.querySelectorAll('#tblGa tbody tr');
+      rowsGa.forEach(row => {
+        const can = row.querySelector('.input-so-can').value;
+        if(can) {
+          data.push([
+            row.querySelector('.col-stt').innerText,
+            can,
+            row.querySelector('.input-sl-long-ga').value,
+            row.querySelector('.input-sl-con').value,
+            row.querySelector('.cell-tl-ga').innerText
+          ]);
+        }
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "CanGa");
+      XLSX.writeFile(wb, `CanGa_${document.getElementById('txtNgay').value || 'Moi'}.xlsx`);
+    }
+
+    function xoaTatCa() {
+      if (confirm("Bạn có chắc chắn muốn làm mới toàn bộ bảng tính?")) {
+        document.querySelector('#tblLong tbody').innerHTML = "";
+        document.querySelector('#tblGa tbody').innerHTML = "";
+        initData();
+        tinhToan();
+      }
+    }
+
+    initData();
+  </script>
+</body>
+</html>
+
