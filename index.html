@@ -31,6 +31,7 @@
     @media (min-width: 600px) { .dashboard { grid-template-columns: repeat(4, 1fr); } }
     .stat-box { background: #e3f2fd; padding: 8px; border-radius: 6px; border-left: 4px solid var(--primary); }
     .stat-box.highlight { background: #e8f5e9; border-left-color: var(--accent); }
+    .stat-box.warning { background: #fff3e0; border-left-color: #ef6c00; }
     .stat-title { font-size: 11px; color: #555; }
     .stat-value { font-size: 15px; font-weight: bold; color: #111; margin-top: 2px; }
 
@@ -100,9 +101,14 @@
         <div class="stat-title">Tổng trọng lượng gà</div>
         <div class="stat-value" id="resTongTLGa" style="color: #b71c1c;">0.0 kg</div>
       </div>
-      <div class="stat-box highlight" style="grid-column: span 2;">
-        <div class="stat-title">Bình quân / con</div>
-        <div class="stat-value" id="resTBCon" style="color: #1565c0; font-size: 18px;">0.000 kg/con</div>
+      <div class="stat-box warning">
+        <div class="stat-title">Trừ gà no (kg/con)</div>
+        <input type="number" step="any" id="txtTruGaNo" class="input-yellow" placeholder="vd: 0.05" oninput="tinhToan()" style="padding: 4px 6px; margin-top: 2px; font-weight: bold; color: #e65100;">
+      </div>
+      <div class="stat-box highlight">
+        <div class="stat-title">Bình quân / con (đã trừ)</div>
+        <div class="stat-value" id="resTBCon" style="color: #1565c0; font-size: 16px;">0.000 kg/con</div>
+        <div id="resTBConGoc" style="font-size: 10px; color: #666; margin-top: 1px;">Gốc: 0.000 kg</div>
       </div>
     </div>
   </div>
@@ -146,7 +152,7 @@
       </table>
     </div>
     <div class="btn-row">
-      <button class="btn-primary" onclick="addRowGa()">+ Thêm 5 dòng cân</button>
+      <button class="btn-primary" onclick="addRowGa(5)">+ Thêm 5 dòng cân</button>
       <button class="btn-success" onclick="xuatExcel()">📥 Xuất File Excel</button>
       <button class="btn-danger" onclick="xoaTatCa()" style="flex: 0.5;">Xóa hết</button>
     </div>
@@ -239,23 +245,28 @@
         }
       });
 
-      const tbCon = tongCon > 0 ? (tongTLGa / tongCon) : 0;
+      const tbConGoc = tongCon > 0 ? (tongTLGa / tongCon) : 0;
+      const truGaNo = parseFloat(document.getElementById('txtTruGaNo').value) || 0;
+      const tbConSauTru = tongCon > 0 ? Math.max(0, tbConGoc - truGaNo) : 0;
 
       document.getElementById('resTongCan').innerText = tongCanTong.toFixed(1) + " kg";
       document.getElementById('resSoMaCan').innerText = soMaCan + " mã";
       document.getElementById('resTongCon').innerText = tongCon + " con";
       document.getElementById('resTongTLGa').innerText = tongTLGa.toFixed(2) + " kg";
-      document.getElementById('resTBCon').innerText = tbCon.toFixed(3) + " kg/con";
+      document.getElementById('resTBCon').innerText = tbConSauTru.toFixed(3) + " kg/con";
+      document.getElementById('resTBConGoc').innerText = "Gốc: " + tbConGoc.toFixed(3) + " kg";
     }
 
     function xuatExcel() {
+      const truGaNo = parseFloat(document.getElementById('txtTruGaNo').value) || 0;
       const data = [
         ["PHIẾU CÂN GÀ XUẤT BÁN", "", "", "", "", ""],
         ["Ngày:", document.getElementById('txtNgay').value, "", "Tổng lồng bì:", document.getElementById('resTongLongBi').innerText],
         ["Khách hàng:", document.getElementById('txtKhachHang').value, "", "TB 1 lồng:", document.getElementById('resTBLong').innerText],
         ["Số xe:", document.getElementById('txtSoXe').value, "", "Tổng Lồng + Gà:", document.getElementById('resTongCan').innerText],
         ["Số mã đã cân:", document.getElementById('resSoMaCan').innerText, "", "Tổng số con:", document.getElementById('resTongCon').innerText],
-        ["Tổng TL Gà (kg):", document.getElementById('resTongTLGa').innerText, "", "Bình quân (kg/con):", document.getElementById('resTBCon').innerText],
+        ["Tổng TL Gà (kg):", document.getElementById('resTongTLGa').innerText, "", "Trừ gà no (kg/con):", truGaNo.toFixed(3)],
+        ["Bình quân gốc:", document.getElementById('resTBConGoc').innerText.replace('Gốc: ', ''), "", "Bình quân sau trừ:", document.getElementById('resTBCon').innerText],
         [],
         ["STT", "Số Cân x 0.1", "Số Lồng", "Số Con", "TL Gà (kg)"]
       ];
@@ -284,6 +295,7 @@
       if (confirm("Bạn có chắc chắn muốn làm mới toàn bộ bảng tính?")) {
         document.querySelector('#tblLong tbody').innerHTML = "";
         document.querySelector('#tblGa tbody').innerHTML = "";
+        document.getElementById('txtTruGaNo').value = "";
         initData();
         tinhToan();
       }
@@ -293,4 +305,3 @@
   </script>
 </body>
 </html>
-
