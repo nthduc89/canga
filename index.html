@@ -216,10 +216,18 @@
           <div class="stat-title">Trừ gà no (kg/con)</div>
           <input type="number" step="any" inputmode="decimal" id="txtTruGaNo" class="input-yellow" placeholder="vd: 0.05" oninput="tinhToan()" style="padding: 4px 6px; margin-top: 2px; font-weight: bold; color: #e65100;">
         </div>
+        <div class="stat-box warning">
+          <div class="stat-title">Đơn giá (đ/kg)</div>
+          <input type="number" step="any" inputmode="decimal" id="txtDonGia" class="input-yellow" placeholder="vd: 55000" oninput="tinhToan()" style="padding: 4px 6px; margin-top: 2px; font-weight: bold; color: #e65100;">
+        </div>
         <div class="stat-box highlight">
           <div class="stat-title">Bình quân / con (đã trừ)</div>
           <div class="stat-value" id="resTBCon" style="color: #1565c0; font-size: 16px;">0.000 kg/con</div>
           <div class="stat-sub" id="resTBConGoc">Gốc: 0.000 kg</div>
+        </div>
+        <div class="stat-box highlight">
+          <div class="stat-title">Thành tiền</div>
+          <div class="stat-value" id="resThanhTien" style="color: #1b5e20; font-size: 16px;">0 đ</div>
         </div>
       </div>
     </div>
@@ -277,14 +285,24 @@
 
   <script>
     const STORAGE_KEY = 'PHIEU_CAN_GA_DATA_V4';
-    const MIN_BQ_CANH_BAO = 1.5; // kg/con
-    const MAX_BQ_CANH_BAO = 4.0; // kg/con
 
     // Ngày theo giờ máy (không dùng UTC để tránh lùi 1 ngày lúc sáng sớm giờ VN)
     function homNay() {
       const d = new Date();
       return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
     }
+
+    // Tiền: dấu chấm ngăn cách hàng nghìn, không làm tròn đến nghìn (chỉ làm tròn phần lẻ của 1 đồng để hiển thị)
+    function nganCach(strSo) { return strSo.replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+    function dinhDangTien(n) {
+      if (!isFinite(n)) n = 0;
+      return nganCach(String(Math.round(n))) + ' đ';
+    }
+    function dinhDangGia(n) {
+      const parts = String(n).split('.');
+      return nganCach(parts[0]) + (parts[1] ? ',' + parts[1] : '');
+    }
+    let tienHienTai = { donGia: 0, thanhTien: 0 };
 
     function showToast(msg) {
       const t = document.getElementById('toast');
@@ -425,13 +443,11 @@
             row.classList.add('row-error');
             warnHtml = `<span class="cell-warn-text">⚠ Thiếu con</span>`;
             soDongCanhBao++;
-          } else {
-            const bqMa = tlGa / valCon;
-            if (bqMa < MIN_BQ_CANH_BAO || bqMa > MAX_BQ_CANH_BAO) {
-              row.classList.add('row-error');
-              warnHtml = `<span class="cell-warn-text">⚠ ${bqMa.toFixed(2)} kg/c</span>`;
-              soDongCanhBao++;
-            }
+          } else if (kgTongMa <= biMa) {
+            // Cân (lồng + gà) không lớn hơn bì -> chắc chắn nhập sai, không phụ thuộc cỡ gà
+            row.classList.add('row-error');
+            warnHtml = `<span class="cell-warn-text">⚠ Cân ≤ bì</span>`;
+            soDongCanhBao++;
           }
 
           cellTL.innerHTML = `${tlGa.toFixed(2)}${warnHtml}`;
@@ -460,6 +476,12 @@
       document.getElementById('resTBCon').innerText = tbConSauTru.toFixed(3) + " kg/con";
       document.getElementById('resTBConGoc').innerText = "Gốc: " + tbConGoc.toFixed(3) + " kg";
 
+      // Thành tiền = tổng TL gà (đã trừ, chưa làm tròn) x đơn giá
+      const donGia = Math.max(0, parseFloat(document.getElementById('txtDonGia').value) || 0);
+      const thanhTien = tongTLGaSauTru * donGia;
+      tienHienTai = { donGia: donGia, thanhTien: thanhTien };
+      document.getElementById('resThanhTien').innerText = dinhDangTien(thanhTien);
+
       // Cập nhật thanh ghim trên cùng
       document.getElementById('sbMa').innerText = soMaCan + " mã";
       document.getElementById('sbCon').innerText = tongCon + " con";
@@ -470,7 +492,7 @@
       const alertBox = document.getElementById('alertBox');
       if (soDongCanhBao > 0) {
         alertBox.style.display = 'block';
-        alertBox.innerText = `⚠ Có ${soDongCanhBao} dòng nghi nhập nhầm (thiếu số con hoặc bình quân ngoài khoảng ${MIN_BQ_CANH_BAO}–${MAX_BQ_CANH_BAO} kg/con). Vui lòng kiểm tra các dòng tô đỏ!`;
+        alertBox.innerText = `⚠ Có ${soDongCanhBao} dòng nghi nhập nhầm (thiếu số con hoặc cân không lớn hơn bì). Vui lòng kiểm tra các dòng tô đỏ!`;
       } else {
         alertBox.style.display = 'none';
       }
@@ -498,6 +520,7 @@
           macDinhLong: document.getElementById('txtMacDinhLong').value,
           macDinhCon: document.getElementById('txtMacDinhCon').value,
           truGaNo: document.getElementById('txtTruGaNo').value,
+          donGia: document.getElementById('txtDonGia').value,
           rowsLong,
           rowsGa
         };
@@ -525,6 +548,7 @@
         document.getElementById('txtMacDinhLong').value = data.macDinhLong !== undefined ? data.macDinhLong : '1';
         document.getElementById('txtMacDinhCon').value = data.macDinhCon || '';
         document.getElementById('txtTruGaNo').value = data.truGaNo || '';
+        document.getElementById('txtDonGia').value = data.donGia || '';
 
         if (data.rowsLong && data.rowsLong.length > 0) {
           data.rowsLong.forEach(r => addRowLong(r.tl, r.sl));
@@ -565,6 +589,9 @@
       const tongTLSauTru = document.getElementById('resTongTLGa').innerText;
       const bqGoc = document.getElementById('resTBConGoc').innerText.replace('Gốc: ', '');
       const bqSauTru = document.getElementById('resTBCon').innerText;
+      const coGia = tienHienTai.donGia > 0;
+      const giaTxt = coGia ? dinhDangGia(tienHienTai.donGia) + ' đ/kg' : '-';
+      const tienTxt = coGia ? dinhDangTien(tienHienTai.thanhTien) : '-';
 
       const text =
 `📋 BÁO CÁO CÂN GÀ XUẤT BÁN
@@ -580,7 +607,9 @@
 🔸 Trừ gà no: ${truGaNo.toFixed(3)} kg/con
 ✅ TỔNG TL SAU TRỪ: ${tongTLSauTru}
 🔹 Bình quân gốc: ${bqGoc}/con
-✅ BÌNH QUÂN SAU TRỪ: ${bqSauTru}`;
+✅ BÌNH QUÂN SAU TRỪ: ${bqSauTru}
+💰 Đơn giá: ${giaTxt}
+💵 THÀNH TIỀN: ${tienTxt}`;
 
       if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(text).then(() => {
@@ -622,6 +651,7 @@
         ["Tổng TL Gà gốc:", document.getElementById('resTongTLGaGoc').innerText.replace('Gốc: ', ''), "", "Trừ gà no (kg/con):", truGaNo.toFixed(3)],
         ["TỔNG TL SAU TRỪ:", document.getElementById('resTongTLGa').innerText, "", "Bình quân gốc:", document.getElementById('resTBConGoc').innerText.replace('Gốc: ', '')],
         ["SĐT khách:", document.getElementById('txtSdtKhach').value, "", "BÌNH QUÂN SAU TRỪ:", document.getElementById('resTBCon').innerText],
+        ["Đơn giá:", tienHienTai.donGia > 0 ? dinhDangGia(tienHienTai.donGia) + " đ/kg" : "", "", "THÀNH TIỀN:", tienHienTai.donGia > 0 ? dinhDangTien(tienHienTai.thanhTien) : ""],
         [],
         ["1. CHI TIẾT CÂN LỒNG KHÔNG (BÌ)", "", "", "", ""],
         ["STT", "TL Lồng x 0.1", "Số Lồng", "Thực tế (kg)", ""]
@@ -676,6 +706,7 @@
         document.getElementById('txtMacDinhLong').value = "1";
         document.getElementById('txtMacDinhCon').value = "";
         document.getElementById('txtTruGaNo').value = "";
+        document.getElementById('txtDonGia').value = "";
         document.querySelector('#tblLong tbody').innerHTML = "";
         document.querySelector('#tblGa tbody').innerHTML = "";
         initDefaultData();
