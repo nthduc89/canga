@@ -2,7 +2,10 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0d47a1">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon-192.png">
   <title>Phiếu Cân Gà - Xuất Bán</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
@@ -19,7 +22,7 @@
       --warn-bg: #ffebee;
     }
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { margin: 0; padding: 0 0 24px 0; background: var(--bg); color: var(--text); font-size: 14px; }
+    body { overscroll-behavior-y: contain; margin: 0; padding: 0 0 24px 0; background: var(--bg); color: var(--text); font-size: 14px; }
 
     /* Thanh tổng hợp ghim trên cùng */
     .sticky-bar {
@@ -44,10 +47,10 @@
 
     .card { background: var(--card); border-radius: 8px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .grid-info { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-    @media (min-width: 600px) { .grid-info { grid-template-columns: repeat(4, 1fr); } }
+    @media (min-width: 650px) { .grid-info { grid-template-columns: repeat(5, 1fr); } }
 
     label { font-size: 11px; font-weight: bold; color: #555; display: block; margin-bottom: 2px; }
-    input { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; }
+    input { width: 100%; padding: 10px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 16px; }
     input:focus { outline: 2px solid var(--primary); }
     .input-yellow { background-color: var(--yellow); }
 
@@ -75,11 +78,11 @@
     }
 
     /* Table styles */
-    .table-container { overflow-x: auto; margin-top: 6px; }
+    .table-container { overflow: visible; margin-top: 6px; }
     table { width: 100%; border-collapse: collapse; text-align: center; }
     th, td { border: 1px solid var(--border); padding: 5px 3px; font-size: 13px; }
-    th { background: #eceff1; color: #37474f; font-weight: 600; }
-    td input { border: none; text-align: center; padding: 6px 2px; border-radius: 0; background: transparent; font-size: 14px; }
+    th { background: #eceff1; color: #37474f; font-weight: 600; position: sticky; top: var(--bar-h, 42px); z-index: 5; box-shadow: inset 0 -1px 0 var(--border); }
+    td input { border: none; text-align: center; padding: 10px 2px; min-height: 44px; border-radius: 0; background: transparent; font-size: 16px; }
     td input:focus { background: #fffde7; outline: none; }
     .col-stt { width: 34px; background: #fafafa; font-weight: 600; }
 
@@ -90,7 +93,7 @@
 
     /* Buttons */
     .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-    button { flex: 1; min-width: 110px; padding: 10px 8px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; }
+    button { flex: 1; min-width: 110px; min-height: 44px; padding: 12px 8px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; }
     .btn-primary { background: var(--primary); color: #fff; }
     .btn-zalo { background: #0068ff; color: #fff; }
     .btn-success { background: var(--accent); color: #fff; }
@@ -155,6 +158,10 @@
         <div>
           <label>Số xe</label>
           <input type="text" id="txtSoXe" placeholder="Biển số..." class="input-yellow" oninput="luuDuLieu()">
+        </div>
+        <div>
+          <label>Số lồng mặc định / mã</label>
+          <input type="number" step="any" inputmode="decimal" id="txtMacDinhLong" value="1" placeholder="vd: 1 hoặc 2" class="input-yellow" oninput="apDungMacDinhLong()">
         </div>
         <div>
           <label>Số con mặc định / mã</label>
@@ -258,6 +265,12 @@
     const MIN_BQ_CANH_BAO = 1.5; // kg/con
     const MAX_BQ_CANH_BAO = 4.0; // kg/con
 
+    // Ngày theo giờ máy (không dùng UTC để tránh lùi 1 ngày lúc sáng sớm giờ VN)
+    function homNay() {
+      const d = new Date();
+      return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    }
+
     function showToast(msg) {
       const t = document.getElementById('toast');
       t.innerText = msg;
@@ -272,10 +285,11 @@
       tr.innerHTML = `
         <td class="col-stt">${stt}</td>
         <td><input type="number" step="any" inputmode="decimal" class="input-yellow input-tl-long" value="${tl}" oninput="onInputLong(this)" placeholder="vd: 75"></td>
-        <td><input type="number" step="any" inputmode="numeric" class="input-sl-long" value="${sl}" oninput="tinhToan()" placeholder="1"></td>
+        <td><input type="number" step="any" inputmode="decimal" class="input-sl-long" value="${sl}" oninput="tinhToan()" placeholder="1"></td>
         <td class="cell-tt-long" style="font-weight: 500;">0.0</td>
       `;
       tbody.appendChild(tr);
+      tr.querySelectorAll('input').forEach(i => i.setAttribute('enterkeyhint', 'next'));
     }
 
     function onInputLong(el) {
@@ -289,23 +303,25 @@
 
     function addRowGa(count = 1, preset = null) {
       const tbody = document.querySelector('#tblGa tbody');
+      const macDinhLong = document.getElementById('txtMacDinhLong').value;
       const macDinhCon = document.getElementById('txtMacDinhCon').value;
 
       for (let k = 0; k < count; k++) {
         const stt = tbody.rows.length + 1;
         const valCan = preset ? (preset.can !== undefined ? preset.can : '') : '';
-        const valLong = preset ? (preset.long !== undefined ? preset.long : '1') : '1';
+        const valLong = preset ? (preset.long !== undefined ? preset.long : macDinhLong) : macDinhLong;
         const valCon = preset ? (preset.con !== undefined ? preset.con : '') : macDinhCon;
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td class="col-stt">${stt}</td>
           <td><input type="number" step="any" inputmode="decimal" class="input-yellow input-so-can" value="${valCan}" oninput="onInputGa(this)" placeholder="vd: 250"></td>
-          <td><input type="number" step="any" inputmode="numeric" class="input-sl-long-ga" value="${valLong}" oninput="tinhToan()" placeholder="1"></td>
+          <td><input type="number" step="any" inputmode="decimal" class="input-sl-long-ga" value="${valLong}" oninput="tinhToan()" placeholder="1"></td>
           <td><input type="number" step="any" inputmode="numeric" class="input-sl-con" value="${valCon}" oninput="tinhToan()" placeholder="vd: 8"></td>
           <td class="cell-tl-ga" style="font-weight: 600; color: #b71c1c;">0.0</td>
         `;
         tbody.appendChild(tr);
+      tr.querySelectorAll('input').forEach(i => i.setAttribute('enterkeyhint', 'next'));
       }
     }
 
@@ -316,6 +332,19 @@
       if (tr === tbody.lastElementChild && el.value !== '') {
         addRowGa(1);
       }
+      tinhToan();
+    }
+
+    function apDungMacDinhLong() {
+      const macDinhLong = document.getElementById('txtMacDinhLong').value;
+      const rowsGa = document.querySelectorAll('#tblGa tbody tr');
+      rowsGa.forEach(row => {
+        const valCan = row.querySelector('.input-so-can').value;
+        // Chỉ tự động điền cho các dòng chưa nhập số cân để không ghi đè mã đã cân
+        if (!valCan) {
+          row.querySelector('.input-sl-long-ga').value = macDinhLong;
+        }
+      });
       tinhToan();
     }
 
@@ -450,6 +479,7 @@
           ngay: document.getElementById('txtNgay').value,
           khachHang: document.getElementById('txtKhachHang').value,
           soXe: document.getElementById('txtSoXe').value,
+          macDinhLong: document.getElementById('txtMacDinhLong').value,
           macDinhCon: document.getElementById('txtMacDinhCon').value,
           truGaNo: document.getElementById('txtTruGaNo').value,
           rowsLong,
@@ -472,9 +502,10 @@
           return;
         }
         const data = JSON.parse(raw);
-        document.getElementById('txtNgay').value = data.ngay || new Date().toISOString().slice(0, 10);
+        document.getElementById('txtNgay').value = data.ngay || homNay();
         document.getElementById('txtKhachHang').value = data.khachHang || '';
         document.getElementById('txtSoXe').value = data.soXe || '';
+        document.getElementById('txtMacDinhLong').value = data.macDinhLong !== undefined ? data.macDinhLong : '1';
         document.getElementById('txtMacDinhCon').value = data.macDinhCon || '';
         document.getElementById('txtTruGaNo').value = data.truGaNo || '';
 
@@ -498,7 +529,7 @@
     }
 
     function initDefaultData() {
-      document.getElementById('txtNgay').valueAsDate = new Date();
+      document.getElementById('txtNgay').value = homNay();
       for (let i = 0; i < 5; i++) addRowLong();
       for (let i = 0; i < 15; i++) addRowGa();
       tinhToan(true);
@@ -558,6 +589,10 @@
     }
 
     function xuatExcel() {
+      if (typeof XLSX === 'undefined') {
+        showToast('Chưa tải được thư viện Excel, hãy kết nối mạng rồi thử lại');
+        return;
+      }
       const truGaNo = parseFloat(document.getElementById('txtTruGaNo').value) || 0;
       const data = [
         ["PHIẾU CÂN GÀ XUẤT BÁN", "", "", "", ""],
@@ -618,6 +653,7 @@
         localStorage.removeItem(STORAGE_KEY);
         document.getElementById('txtKhachHang').value = "";
         document.getElementById('txtSoXe').value = "";
+        document.getElementById('txtMacDinhLong').value = "1";
         document.getElementById('txtMacDinhCon').value = "";
         document.getElementById('txtTruGaNo').value = "";
         document.querySelector('#tblLong tbody').innerHTML = "";
@@ -627,6 +663,75 @@
       }
     }
 
+    // ===== Tối ưu điện thoại =====
+    // Chiều cao thanh ghim -> để tiêu đề bảng dính ngay bên dưới
+    function capNhatChieuCaoBar() {
+      const b = document.querySelector('.sticky-bar');
+      if (b) document.documentElement.style.setProperty('--bar-h', b.offsetHeight + 'px');
+    }
+    window.addEventListener('resize', capNhatChieuCaoBar);
+
+    // Nhấn Enter/Next: nhảy sang ô tiếp theo, hết dòng thì xuống dòng kế (tự thêm dòng nếu chưa có)
+    function focusVaCuon(el) {
+      if (!el) return;
+      el.focus();
+      if (el.select) { try { el.select(); } catch (e) {} }
+      if (el.scrollIntoView) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      const el = e.target;
+      if (!el.matches || !el.matches('#tblLong input, #tblGa input')) return;
+      e.preventDefault();
+      const isGa = !!el.closest('#tblGa');
+      const firstCls = isGa ? '.input-so-can' : '.input-tl-long';
+      const tr = el.closest('tr');
+      const tbody = tr.parentNode;
+
+      function xuongDongKe() {
+        let next = tr.nextElementSibling;
+        if (!next) {
+          if (isGa) addRowGa(1); else addRowLong();
+          next = tbody.lastElementChild;
+        }
+        return next.querySelector(firstCls);
+      }
+
+      if (el.matches(firstCls)) {
+        focusVaCuon(xuongDongKe());      // đang ở ô đầu: nhảy xuống ô đầu dòng kế
+      } else {
+        const inputs = Array.from(tr.querySelectorAll('input'));
+        const nextInRow = inputs[inputs.indexOf(el) + 1];
+        focusVaCuon(nextInRow || xuongDongKe());
+      }
+    });
+
+    // Giữ màn hình sáng khi đang cân (nếu trình duyệt hỗ trợ)
+    let wakeLock = null;
+    async function giuManHinhSang() {
+      try {
+        if ('wakeLock' in navigator && document.visibilityState === 'visible') {
+          wakeLock = await navigator.wakeLock.request('screen');
+        }
+      } catch (e) { /* bỏ qua */ }
+    }
+    document.addEventListener('visibilitychange', giuManHinhSang);
+
+    // Xin trình duyệt giữ dữ liệu lâu dài, tránh bị dọn khi thiếu bộ nhớ
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+
+    // Chạy offline: đăng ký service worker, rồi lưu luôn trang hiện tại vào bộ nhớ đệm
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js')
+          .then(() => navigator.serviceWorker.ready)
+          .then(() => fetch(location.href).catch(() => {}))
+          .catch(() => {});
+      });
+    }
+
+    capNhatChieuCaoBar();
+    giuManHinhSang();
     khoiPhucDuLieu();
   </script>
 </body>
