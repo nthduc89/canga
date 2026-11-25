@@ -99,6 +99,15 @@
     .btn-success { background: var(--accent); color: #fff; }
     .btn-danger { background: var(--danger); color: #fff; min-width: 80px; flex: 0.6; }
 
+    /* Nút giữ màn hình sáng */
+    .wake-btn { display: block; flex: none; min-width: 0; margin: 0 auto 10px; padding: 8px 16px; border-radius: 22px; background: #fff; border: 1px solid var(--border); color: #546e7a; font-size: 13px; }
+    .wake-btn.on { background: #fff8e1; border-color: #ffb300; color: #e65100; }
+    .wake-btn:disabled { opacity: 0.6; cursor: default; }
+
+    /* Chân trang */
+    .footer { text-align: center; font-size: 12px; color: #78909c; margin: 14px 0 4px; }
+    .footer a { color: inherit; text-decoration: none; }
+
     /* Toast thông báo */
     .toast {
       position: fixed;
@@ -143,6 +152,7 @@
   <div class="container">
     <h1>HỆ THỐNG CÂN GÀ - XUẤT BÁN</h1>
     <div class="save-status" id="saveStatus">Dữ liệu tự động lưu trên máy</div>
+    <button type="button" class="wake-btn" id="btnWake" onclick="toggleWake()">☀ Giữ màn hình sáng</button>
 
     <!-- Thông tin lô hàng -->
     <div class="card">
@@ -256,6 +266,7 @@
         <button class="btn-danger" onclick="xoaTatCa()">Xóa hết</button>
       </div>
     </div>
+    <div class="footer">Duc Nguyen - <a href="tel:0949960004">0949 960 004</a></div>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -706,16 +717,64 @@
       }
     });
 
-    // Giữ màn hình sáng khi đang cân (nếu trình duyệt hỗ trợ)
+    // ===== Giữ màn hình luôn sáng (Wake Lock) =====
+    const WAKE_KEY = 'CANGA_WAKELOCK';
+    const wakeSupported = 'wakeLock' in navigator;
     let wakeLock = null;
-    async function giuManHinhSang() {
-      try {
-        if ('wakeLock' in navigator && document.visibilityState === 'visible') {
-          wakeLock = await navigator.wakeLock.request('screen');
-        }
-      } catch (e) { /* bỏ qua */ }
+    let wakeFailed = false;
+    let wakeOn = true;
+    try { wakeOn = localStorage.getItem(WAKE_KEY) !== '0'; } catch (e) {}
+
+    function hienTrangThaiWake() {
+      const b = document.getElementById('btnWake');
+      if (!b) return;
+      if (!wakeSupported) {
+        b.disabled = true;
+        b.classList.remove('on');
+        b.innerText = '☀ Máy chưa hỗ trợ giữ sáng màn hình';
+        return;
+      }
+      const dangGiu = wakeOn && !!wakeLock;
+      b.classList.toggle('on', dangGiu);
+      if (!wakeOn) b.innerText = '☀ Giữ màn hình sáng: TẮT';
+      else if (dangGiu) b.innerText = '☀ Giữ màn hình sáng: BẬT';
+      else if (wakeFailed) b.innerText = '☀ Giữ sáng: chưa bật được (chạm để thử lại)';
+      else b.innerText = '☀ Giữ màn hình sáng: đang bật...';
     }
-    document.addEventListener('visibilitychange', giuManHinhSang);
+
+    async function batWake() {
+      if (!wakeSupported || !wakeOn || document.visibilityState !== 'visible') return;
+      if (wakeLock && !wakeLock.released) { hienTrangThaiWake(); return; }
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeFailed = false;
+        wakeLock.addEventListener('release', () => { wakeLock = null; hienTrangThaiWake(); });
+      } catch (e) {
+        wakeLock = null;
+        wakeFailed = true;   // vd: đang bật chế độ tiết kiệm pin
+      }
+      hienTrangThaiWake();
+    }
+
+    async function tatWake() {
+      try { if (wakeLock) await wakeLock.release(); } catch (e) {}
+      wakeLock = null;
+      wakeFailed = false;
+      hienTrangThaiWake();
+    }
+
+    async function toggleWake() {
+      if (!wakeSupported) return;
+      wakeOn = !wakeOn;
+      try { localStorage.setItem(WAKE_KEY, wakeOn ? '1' : '0'); } catch (e) {}
+      if (wakeOn) { await batWake(); showToast(wakeLock ? 'Đã bật giữ màn hình sáng' : 'Chưa bật được giữ sáng màn hình'); }
+      else { await tatWake(); showToast('Đã tắt giữ màn hình sáng'); }
+    }
+
+    // Quay lại trang (mở khóa máy, chuyển tab) thì xin giữ sáng lại
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') batWake(); });
+    // Nếu lúc mở trang trình duyệt chưa cho phép, thử lại ở lần chạm đầu tiên
+    document.addEventListener('pointerdown', () => { if (wakeOn && !wakeLock) batWake(); }, { once: true });
 
     // Xin trình duyệt giữ dữ liệu lâu dài, tránh bị dọn khi thiếu bộ nhớ
     try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
@@ -731,7 +790,8 @@
     }
 
     capNhatChieuCaoBar();
-    giuManHinhSang();
+    hienTrangThaiWake();
+    batWake();
     khoiPhucDuLieu();
   </script>
 </body>
