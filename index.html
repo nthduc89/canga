@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Phiếu Cân Gà - Mau Can Ga</title>
+  <title>Phiếu Cân Gà - Xuất Bán</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     :root {
@@ -15,12 +15,37 @@
       --border: #cfd8dc;
       --yellow: #fff9c4;
       --accent: #2e7d32;
+      --danger: #d32f2f;
+      --warn-bg: #ffebee;
     }
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { margin: 0; padding: 12px; background: var(--bg); color: var(--text); font-size: 14px; }
-    h1 { font-size: 18px; text-align: center; margin: 6px 0 14px; color: var(--primary-dark); }
+    body { margin: 0; padding: 0 0 24px 0; background: var(--bg); color: var(--text); font-size: 14px; }
+
+    /* Thanh tổng hợp ghim trên cùng */
+    .sticky-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--primary-dark);
+      color: #fff;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+      padding: 6px 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      text-align: center;
+    }
+    .sb-label { display: block; font-size: 10px; opacity: 0.85; }
+    .sb-val { display: block; font-size: 13px; font-weight: 700; margin-top: 1px; }
+
+    .container { padding: 10px 12px; max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 17px; text-align: center; margin: 4px 0 4px; color: var(--primary-dark); }
+    .save-status { text-align: center; font-size: 11px; color: var(--accent); margin-bottom: 10px; min-height: 16px; }
+
     .card { background: var(--card); border-radius: 8px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+    .grid-info { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    @media (min-width: 600px) { .grid-info { grid-template-columns: repeat(4, 1fr); } }
+
     label { font-size: 11px; font-weight: bold; color: #555; display: block; margin-bottom: 2px; }
     input { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; }
     input:focus { outline: 2px solid var(--primary); }
@@ -34,6 +59,20 @@
     .stat-box.warning { background: #fff3e0; border-left-color: #ef6c00; }
     .stat-title { font-size: 11px; color: #555; }
     .stat-value { font-size: 15px; font-weight: bold; color: #111; margin-top: 2px; }
+    .stat-sub { font-size: 10px; color: #666; margin-top: 2px; }
+
+    /* Warning alert banner */
+    .alert-box {
+      display: none;
+      background: #ffebee;
+      color: #b71c1c;
+      border: 1px solid #ef9a9a;
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
 
     /* Table styles */
     .table-container { overflow-x: auto; margin-top: 6px; }
@@ -41,162 +80,259 @@
     th, td { border: 1px solid var(--border); padding: 5px 3px; font-size: 13px; }
     th { background: #eceff1; color: #37474f; font-weight: 600; }
     td input { border: none; text-align: center; padding: 6px 2px; border-radius: 0; background: transparent; font-size: 14px; }
-    td input:focus { background: #fffde7; }
-    .col-stt { width: 36px; background: #fafafa; font-weight: 600; }
+    td input:focus { background: #fffde7; outline: none; }
+    .col-stt { width: 34px; background: #fafafa; font-weight: 600; }
+
+    /* Highlight dòng lỗi/bất thường */
+    tr.row-error { background-color: #ffebee !important; }
+    tr.row-error .col-stt { background-color: #ffcdd2; color: #b71c1c; }
+    .cell-warn-text { display: block; font-size: 10px; color: #d32f2f; font-weight: 600; margin-top: 1px; }
 
     /* Buttons */
-    .btn-row { display: flex; gap: 8px; margin-top: 10px; }
-    button { flex: 1; padding: 10px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; }
+    .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    button { flex: 1; min-width: 110px; padding: 10px 8px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; }
     .btn-primary { background: var(--primary); color: #fff; }
+    .btn-zalo { background: #0068ff; color: #fff; }
     .btn-success { background: var(--accent); color: #fff; }
-    .btn-danger { background: #d32f2f; color: #fff; }
+    .btn-danger { background: var(--danger); color: #fff; min-width: 80px; flex: 0.6; }
+
+    /* Toast thông báo */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(33, 33, 33, 0.92);
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 20px;
+      font-size: 13px;
+      z-index: 999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    .toast.show { opacity: 1; }
   </style>
 </head>
 <body>
 
-  <h1>HỆ THỐNG CÂN GÀ - XUẤT BÁN</h1>
+  <!-- Thanh tổng hợp ghim cố định -->
+  <div class="sticky-bar">
+    <div>
+      <span class="sb-label">Số mã</span>
+      <span class="sb-val" id="sbMa">0</span>
+    </div>
+    <div>
+      <span class="sb-label">Tổng con</span>
+      <span class="sb-val" id="sbCon">0</span>
+    </div>
+    <div>
+      <span class="sb-label">TL sau trừ</span>
+      <span class="sb-val" id="sbTL" style="color: #ffeb3b;">0.0 kg</span>
+    </div>
+    <div>
+      <span class="sb-label">Bình quân</span>
+      <span class="sb-val" id="sbBQ" style="color: #80d8ff;">0.000</span>
+    </div>
+  </div>
 
-  <!-- Thông tin lô hàng -->
-  <div class="card">
-    <div class="grid-3">
-      <div>
-        <label>Ngày cân</label>
-        <input type="date" id="txtNgay" class="input-yellow">
+  <div class="container">
+    <h1>HỆ THỐNG CÂN GÀ - XUẤT BÁN</h1>
+    <div class="save-status" id="saveStatus">Dữ liệu tự động lưu trên máy</div>
+
+    <!-- Thông tin lô hàng -->
+    <div class="card">
+      <div class="grid-info">
+        <div>
+          <label>Ngày cân</label>
+          <input type="date" id="txtNgay" class="input-yellow" oninput="luuDuLieu()">
+        </div>
+        <div>
+          <label>Khách hàng</label>
+          <input type="text" id="txtKhachHang" placeholder="Tên đối tác..." class="input-yellow" oninput="luuDuLieu()">
+        </div>
+        <div>
+          <label>Số xe</label>
+          <input type="text" id="txtSoXe" placeholder="Biển số..." class="input-yellow" oninput="luuDuLieu()">
+        </div>
+        <div>
+          <label>Số con mặc định / mã</label>
+          <input type="number" inputmode="numeric" id="txtMacDinhCon" placeholder="vd: 8 hoặc 10" class="input-yellow" oninput="apDungMacDinhCon()">
+        </div>
       </div>
-      <div>
-        <label>Khách hàng</label>
-        <input type="text" id="txtKhachHang" placeholder="Tên đối tác..." class="input-yellow">
+    </div>
+
+    <!-- Thống kê tổng hợp -->
+    <div class="card">
+      <div class="dashboard">
+        <div class="stat-box">
+          <div class="stat-title">Tổng số lồng (bì)</div>
+          <div class="stat-value" id="resTongLongBi">0 Cái</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-title">TB 1 lồng</div>
+          <div class="stat-value" id="resTBLong">0.000 kg</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-title">Tổng Lồng + Gà</div>
+          <div class="stat-value" id="resTongCan">0.0 kg</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-title">Số mã đã cân</div>
+          <div class="stat-value" id="resSoMaCan">0 mã</div>
+        </div>
+        <div class="stat-box highlight">
+          <div class="stat-title">Tổng số con</div>
+          <div class="stat-value" id="resTongCon">0 con</div>
+        </div>
+        <div class="stat-box highlight">
+          <div class="stat-title">Tổng TL gà (đã trừ)</div>
+          <div class="stat-value" id="resTongTLGa" style="color: #b71c1c;">0.00 kg</div>
+          <div class="stat-sub" id="resTongTLGaGoc">Gốc: 0.00 kg</div>
+        </div>
+        <div class="stat-box warning">
+          <div class="stat-title">Trừ gà no (kg/con)</div>
+          <input type="number" step="any" inputmode="decimal" id="txtTruGaNo" class="input-yellow" placeholder="vd: 0.05" oninput="tinhToan()" style="padding: 4px 6px; margin-top: 2px; font-weight: bold; color: #e65100;">
+        </div>
+        <div class="stat-box highlight">
+          <div class="stat-title">Bình quân / con (đã trừ)</div>
+          <div class="stat-value" id="resTBCon" style="color: #1565c0; font-size: 16px;">0.000 kg/con</div>
+          <div class="stat-sub" id="resTBConGoc">Gốc: 0.000 kg</div>
+        </div>
       </div>
-      <div>
-        <label>Số xe</label>
-        <input type="text" id="txtSoXe" placeholder="Biển số..." class="input-yellow">
+    </div>
+
+    <!-- Bảng Cân Lồng Không -->
+    <div class="card">
+      <div style="font-weight: bold; margin-bottom: 6px; color: #0d47a1;">1. CÂN LỒNG KHÔNG (BÌ)</div>
+      <div class="table-container">
+        <table id="tblLong">
+          <thead>
+            <tr>
+              <th class="col-stt">STT</th>
+              <th>TL Lồng × 0.1</th>
+              <th>Số Lồng</th>
+              <th>Thực tế (kg)</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="addRowLong()">+ Thêm dòng bì</button>
+      </div>
+    </div>
+
+    <!-- Bảng Cân Gà -->
+    <div class="card">
+      <div style="font-weight: bold; margin-bottom: 6px; color: #2e7d32;">2. CÂN GÀ (CẢ LỒNG + GÀ)</div>
+      <div class="alert-box" id="alertBox"></div>
+      <div class="table-container">
+        <table id="tblGa">
+          <thead>
+            <tr>
+              <th class="col-stt">STT</th>
+              <th>Số Cân × 0.1</th>
+              <th>Số Lồng</th>
+              <th>Số Con</th>
+              <th>TL Gà (kg)</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="addRowGa(5)">+ Thêm 5 dòng</button>
+        <button class="btn-zalo" onclick="saoChepBaoCao()">📋 Chép báo cáo</button>
+        <button class="btn-success" onclick="xuatExcel()">📥 Xuất Excel</button>
+        <button class="btn-danger" onclick="xoaTatCa()">Xóa hết</button>
       </div>
     </div>
   </div>
 
-  <!-- Thống kê tổng hợp -->
-  <div class="card">
-    <div class="dashboard">
-      <div class="stat-box">
-        <div class="stat-title">Tổng số lồng (bì)</div>
-        <div class="stat-value" id="resTongLongBi">0 Cái</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-title">TB 1 lồng</div>
-        <div class="stat-value" id="resTBLong">0.00 kg</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-title">Tổng Lồng + Gà</div>
-        <div class="stat-value" id="resTongCan">0.0 kg</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-title">Số mã đã cân</div>
-        <div class="stat-value" id="resSoMaCan">0 mã</div>
-      </div>
-      <div class="stat-box highlight">
-        <div class="stat-title">Tổng số con</div>
-        <div class="stat-value" id="resTongCon">0 con</div>
-      </div>
-      <div class="stat-box highlight">
-        <div class="stat-title">Tổng trọng lượng gà</div>
-        <div class="stat-value" id="resTongTLGa" style="color: #b71c1c;">0.0 kg</div>
-      </div>
-      <div class="stat-box warning">
-        <div class="stat-title">Trừ gà no (kg/con)</div>
-        <input type="number" step="any" id="txtTruGaNo" class="input-yellow" placeholder="vd: 0.05" oninput="tinhToan()" style="padding: 4px 6px; margin-top: 2px; font-weight: bold; color: #e65100;">
-      </div>
-      <div class="stat-box highlight">
-        <div class="stat-title">Bình quân / con (đã trừ)</div>
-        <div class="stat-value" id="resTBCon" style="color: #1565c0; font-size: 16px;">0.000 kg/con</div>
-        <div id="resTBConGoc" style="font-size: 10px; color: #666; margin-top: 1px;">Gốc: 0.000 kg</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Bảng Cân Lồng Không -->
-  <div class="card">
-    <div style="font-weight: bold; margin-bottom: 6px; color: #0d47a1;">1. CÂN LỒNG KHÔNG (BÌ)</div>
-    <div class="table-container">
-      <table id="tblLong">
-        <thead>
-          <tr>
-            <th class="col-stt">STT</th>
-            <th>TL Lồng × 0.1</th>
-            <th>Số Lồng</th>
-            <th>Thực tế (kg)</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-    <div class="btn-row">
-      <button class="btn-primary" onclick="addRowLong()">+ Thêm dòng bì</button>
-    </div>
-  </div>
-
-  <!-- Bảng Cân Gà -->
-  <div class="card">
-    <div style="font-weight: bold; margin-bottom: 6px; color: #2e7d32;">2. CÂN GÀ (CẢ LỒNG + GÀ)</div>
-    <div class="table-container">
-      <table id="tblGa">
-        <thead>
-          <tr>
-            <th class="col-stt">STT</th>
-            <th>Số Cân × 0.1</th>
-            <th>Số Lồng</th>
-            <th>Số Con</th>
-            <th>TL Gà (kg)</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-    <div class="btn-row">
-      <button class="btn-primary" onclick="addRowGa(5)">+ Thêm 5 dòng cân</button>
-      <button class="btn-success" onclick="xuatExcel()">📥 Xuất File Excel</button>
-      <button class="btn-danger" onclick="xoaTatCa()" style="flex: 0.5;">Xóa hết</button>
-    </div>
-  </div>
+  <div class="toast" id="toast"></div>
 
   <script>
-    document.getElementById('txtNgay').valueAsDate = new Date();
+    const STORAGE_KEY = 'PHIEU_CAN_GA_DATA_V4';
+    const MIN_BQ_CANH_BAO = 1.5; // kg/con
+    const MAX_BQ_CANH_BAO = 4.0; // kg/con
 
-    // Khởi tạo dòng ban đầu
-    function initData() {
-      for (let i = 0; i < 5; i++) addRowLong();
-      for (let i = 0; i < 15; i++) addRowGa();
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.innerText = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2200);
     }
 
-    function addRowLong() {
+    function addRowLong(tl = '', sl = '1') {
       const tbody = document.querySelector('#tblLong tbody');
       const stt = tbody.rows.length + 1;
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td class="col-stt">${stt}</td>
-        <td><input type="number" step="any" class="input-yellow input-tl-long" oninput="tinhToan()" placeholder="vd: 75"></td>
-        <td><input type="number" step="any" class="input-sl-long" value="1" oninput="tinhToan()" placeholder="vd: 10"></td>
+        <td><input type="number" step="any" inputmode="decimal" class="input-yellow input-tl-long" value="${tl}" oninput="onInputLong(this)" placeholder="vd: 75"></td>
+        <td><input type="number" step="any" inputmode="numeric" class="input-sl-long" value="${sl}" oninput="tinhToan()" placeholder="1"></td>
         <td class="cell-tt-long" style="font-weight: 500;">0.0</td>
       `;
       tbody.appendChild(tr);
     }
 
-    function addRowGa(count = 1) {
+    function onInputLong(el) {
+      const tr = el.closest('tr');
+      const tbody = tr.parentNode;
+      if (tr === tbody.lastElementChild && el.value !== '') {
+        addRowLong();
+      }
+      tinhToan();
+    }
+
+    function addRowGa(count = 1, preset = null) {
       const tbody = document.querySelector('#tblGa tbody');
-      for(let k = 0; k < count; k++) {
+      const macDinhCon = document.getElementById('txtMacDinhCon').value;
+
+      for (let k = 0; k < count; k++) {
         const stt = tbody.rows.length + 1;
+        const valCan = preset ? (preset.can !== undefined ? preset.can : '') : '';
+        const valLong = preset ? (preset.long !== undefined ? preset.long : '1') : '1';
+        const valCon = preset ? (preset.con !== undefined ? preset.con : '') : macDinhCon;
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td class="col-stt">${stt}</td>
-          <td><input type="number" step="any" class="input-yellow input-so-can" oninput="tinhToan()" placeholder="vd: 250"></td>
-          <td><input type="number" step="any" class="input-sl-long-ga" value="1" oninput="tinhToan()" placeholder="vd: 2"></td>
-          <td><input type="number" step="any" class="input-sl-con" oninput="tinhToan()" placeholder="vd: 8"></td>
+          <td><input type="number" step="any" inputmode="decimal" class="input-yellow input-so-can" value="${valCan}" oninput="onInputGa(this)" placeholder="vd: 250"></td>
+          <td><input type="number" step="any" inputmode="numeric" class="input-sl-long-ga" value="${valLong}" oninput="tinhToan()" placeholder="1"></td>
+          <td><input type="number" step="any" inputmode="numeric" class="input-sl-con" value="${valCon}" oninput="tinhToan()" placeholder="vd: 8"></td>
           <td class="cell-tl-ga" style="font-weight: 600; color: #b71c1c;">0.0</td>
         `;
         tbody.appendChild(tr);
       }
     }
 
-    function tinhToan() {
+    function onInputGa(el) {
+      const tr = el.closest('tr');
+      const tbody = tr.parentNode;
+      // Tự động thêm dòng mới khi nhập tới dòng cuối cùng
+      if (tr === tbody.lastElementChild && el.value !== '') {
+        addRowGa(1);
+      }
+      tinhToan();
+    }
+
+    function apDungMacDinhCon() {
+      const macDinhCon = document.getElementById('txtMacDinhCon').value;
+      const rowsGa = document.querySelectorAll('#tblGa tbody tr');
+      rowsGa.forEach(row => {
+        const valCan = row.querySelector('.input-so-can').value;
+        // Chỉ tự động điền cho các dòng chưa nhập số cân để không ghi đè mã đã cân
+        if (!valCan) {
+          row.querySelector('.input-sl-con').value = macDinhCon;
+        }
+      });
+      tinhToan();
+    }
+
+    function tinhToan(skipSave = false) {
       // 1. Tính cân bì lồng
       let tongSoLongBi = 0;
       let tongKGLongBi = 0;
@@ -205,7 +341,7 @@
       rowsLong.forEach(row => {
         const valCan = parseFloat(row.querySelector('.input-tl-long').value) || 0;
         const valSL = parseFloat(row.querySelector('.input-sl-long').value) || 0;
-        const kgThuc = (valCan * 0.1);
+        const kgThuc = valCan * 0.1;
         row.querySelector('.cell-tt-long').innerText = kgThuc > 0 ? kgThuc.toFixed(2) : '0.0';
         if (valSL > 0 && kgThuc > 0) {
           tongSoLongBi += valSL;
@@ -217,17 +353,22 @@
       document.getElementById('resTongLongBi').innerText = tongSoLongBi + " Cái";
       document.getElementById('resTBLong').innerText = tbLong.toFixed(3) + " kg";
 
-      // 2. Tính cân gà
+      // 2. Tính cân gà & kiểm tra cảnh báo nhập nhầm
       let tongCanTong = 0;
       let tongCon = 0;
-      let tongTLGa = 0;
+      let tongTLGaGoc = 0;
       let soMaCan = 0;
+      let soDongCanhBao = 0;
 
       const rowsGa = document.querySelectorAll('#tblGa tbody tr');
       rowsGa.forEach(row => {
-        const valCan = parseFloat(row.querySelector('.input-so-can').value) || 0;
+        const rawCan = row.querySelector('.input-so-can').value;
+        const valCan = parseFloat(rawCan) || 0;
         const valSLLong = parseFloat(row.querySelector('.input-sl-long-ga').value) || 0;
         const valCon = parseFloat(row.querySelector('.input-sl-con').value) || 0;
+        const cellTL = row.querySelector('.cell-tl-ga');
+
+        row.classList.remove('row-error');
 
         if (valCan > 0) {
           soMaCan++;
@@ -235,73 +376,258 @@
           const biMa = valSLLong * tbLong;
           const tlGa = Math.max(0, kgTongMa - biMa);
 
-          row.querySelector('.cell-tl-ga').innerText = tlGa.toFixed(2);
+          let warnHtml = '';
+          if (valCon <= 0) {
+            row.classList.add('row-error');
+            warnHtml = `<span class="cell-warn-text">⚠ Thiếu con</span>`;
+            soDongCanhBao++;
+          } else {
+            const bqMa = tlGa / valCon;
+            if (bqMa < MIN_BQ_CANH_BAO || bqMa > MAX_BQ_CANH_BAO) {
+              row.classList.add('row-error');
+              warnHtml = `<span class="cell-warn-text">⚠ ${bqMa.toFixed(2)} kg/c</span>`;
+              soDongCanhBao++;
+            }
+          }
+
+          cellTL.innerHTML = `${tlGa.toFixed(2)}${warnHtml}`;
 
           tongCanTong += kgTongMa;
           tongCon += valCon;
-          tongTLGa += tlGa;
+          tongTLGaGoc += tlGa;
         } else {
-          row.querySelector('.cell-tl-ga').innerText = '0.0';
+          cellTL.innerText = '0.0';
         }
       });
 
-      const tbConGoc = tongCon > 0 ? (tongTLGa / tongCon) : 0;
       const truGaNo = parseFloat(document.getElementById('txtTruGaNo').value) || 0;
+      const tongTruGaNo = truGaNo * tongCon;
+      const tongTLGaSauTru = Math.max(0, tongTLGaGoc - tongTruGaNo);
+
+      const tbConGoc = tongCon > 0 ? (tongTLGaGoc / tongCon) : 0;
       const tbConSauTru = tongCon > 0 ? Math.max(0, tbConGoc - truGaNo) : 0;
 
+      // Cập nhật Dashboard
       document.getElementById('resTongCan').innerText = tongCanTong.toFixed(1) + " kg";
       document.getElementById('resSoMaCan').innerText = soMaCan + " mã";
       document.getElementById('resTongCon').innerText = tongCon + " con";
-      document.getElementById('resTongTLGa').innerText = tongTLGa.toFixed(2) + " kg";
+      document.getElementById('resTongTLGa').innerText = tongTLGaSauTru.toFixed(2) + " kg";
+      document.getElementById('resTongTLGaGoc').innerText = "Gốc: " + tongTLGaGoc.toFixed(2) + " kg";
       document.getElementById('resTBCon').innerText = tbConSauTru.toFixed(3) + " kg/con";
       document.getElementById('resTBConGoc').innerText = "Gốc: " + tbConGoc.toFixed(3) + " kg";
+
+      // Cập nhật thanh ghim trên cùng
+      document.getElementById('sbMa').innerText = soMaCan + " mã";
+      document.getElementById('sbCon').innerText = tongCon + " con";
+      document.getElementById('sbTL').innerText = tongTLGaSauTru.toFixed(1) + " kg";
+      document.getElementById('sbBQ').innerText = tbConSauTru.toFixed(3);
+
+      // Cập nhật thông báo cảnh báo
+      const alertBox = document.getElementById('alertBox');
+      if (soDongCanhBao > 0) {
+        alertBox.style.display = 'block';
+        alertBox.innerText = `⚠ Có ${soDongCanhBao} dòng nghi nhập nhầm (thiếu số con hoặc bình quân ngoài khoảng ${MIN_BQ_CANH_BAO}–${MAX_BQ_CANH_BAO} kg/con). Vui lòng kiểm tra các dòng tô đỏ!`;
+      } else {
+        alertBox.style.display = 'none';
+      }
+
+      if (!skipSave) luuDuLieu();
+    }
+
+    function luuDuLieu() {
+      try {
+        const rowsLong = Array.from(document.querySelectorAll('#tblLong tbody tr')).map(row => ({
+          tl: row.querySelector('.input-tl-long').value,
+          sl: row.querySelector('.input-sl-long').value
+        }));
+        const rowsGa = Array.from(document.querySelectorAll('#tblGa tbody tr')).map(row => ({
+          can: row.querySelector('.input-so-can').value,
+          long: row.querySelector('.input-sl-long-ga').value,
+          con: row.querySelector('.input-sl-con').value
+        }));
+
+        const payload = {
+          ngay: document.getElementById('txtNgay').value,
+          khachHang: document.getElementById('txtKhachHang').value,
+          soXe: document.getElementById('txtSoXe').value,
+          macDinhCon: document.getElementById('txtMacDinhCon').value,
+          truGaNo: document.getElementById('txtTruGaNo').value,
+          rowsLong,
+          rowsGa
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        const now = new Date();
+        const gio = now.toTimeString().slice(0, 8);
+        document.getElementById('saveStatus').innerText = `✓ Đã tự động lưu lúc ${gio}`;
+      } catch (e) {
+        console.error('Lỗi lưu dữ liệu:', e);
+      }
+    }
+
+    function khoiPhucDuLieu() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          initDefaultData();
+          return;
+        }
+        const data = JSON.parse(raw);
+        document.getElementById('txtNgay').value = data.ngay || new Date().toISOString().slice(0, 10);
+        document.getElementById('txtKhachHang').value = data.khachHang || '';
+        document.getElementById('txtSoXe').value = data.soXe || '';
+        document.getElementById('txtMacDinhCon').value = data.macDinhCon || '';
+        document.getElementById('txtTruGaNo').value = data.truGaNo || '';
+
+        if (data.rowsLong && data.rowsLong.length > 0) {
+          data.rowsLong.forEach(r => addRowLong(r.tl, r.sl));
+        } else {
+          for (let i = 0; i < 5; i++) addRowLong();
+        }
+
+        if (data.rowsGa && data.rowsGa.length > 0) {
+          data.rowsGa.forEach(r => addRowGa(1, r));
+        } else {
+          for (let i = 0; i < 15; i++) addRowGa();
+        }
+
+        tinhToan(true);
+        document.getElementById('saveStatus').innerText = '✓ Đã khôi phục dữ liệu phiên trước';
+      } catch (e) {
+        initDefaultData();
+      }
+    }
+
+    function initDefaultData() {
+      document.getElementById('txtNgay').valueAsDate = new Date();
+      for (let i = 0; i < 5; i++) addRowLong();
+      for (let i = 0; i < 15; i++) addRowGa();
+      tinhToan(true);
+    }
+
+    function saoChepBaoCao() {
+      const ngay = document.getElementById('txtNgay').value || '-';
+      const kh = document.getElementById('txtKhachHang').value || '-';
+      const xe = document.getElementById('txtSoXe').value || '-';
+      const soMa = document.getElementById('resSoMaCan').innerText;
+      const tongCon = document.getElementById('resTongCon').innerText;
+      const tbLong = document.getElementById('resTBLong').innerText;
+      const tongTLGoc = document.getElementById('resTongTLGaGoc').innerText.replace('Gốc: ', '');
+      const truGaNo = parseFloat(document.getElementById('txtTruGaNo').value) || 0;
+      const tongTLSauTru = document.getElementById('resTongTLGa').innerText;
+      const bqGoc = document.getElementById('resTBConGoc').innerText.replace('Gốc: ', '');
+      const bqSauTru = document.getElementById('resTBCon').innerText;
+
+      const text =
+`📋 BÁO CÁO CÂN GÀ XUẤT BÁN
+📅 Ngày: ${ngay}
+👤 Khách hàng: ${kh}
+🚚 Số xe: ${xe}
+------------------------
+📦 TB 1 lồng (bì): ${tbLong}
+⚖️ Số mã đã cân: ${soMa}
+🐔 Tổng số con: ${tongCon}
+🔹 Tổng TL gốc: ${tongTLGoc}
+🔸 Trừ gà no: ${truGaNo.toFixed(3)} kg/con
+✅ TỔNG TL SAU TRỪ: ${tongTLSauTru}
+🔹 Bình quân gốc: ${bqGoc}/con
+✅ BÌNH QUÂN SAU TRỪ: ${bqSauTru}`;
+
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => {
+          showToast('Đã sao chép báo cáo! Bạn có thể dán vào Zalo.');
+        }).catch(() => fallbackCopy(text));
+      } else {
+        fallbackCopy(text);
+      }
+    }
+
+    function fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast('Đã sao chép báo cáo! Bạn có thể dán vào Zalo.');
+      } catch (err) {
+        alert('Không thể tự sao chép, vui lòng copy thủ công:\n\n' + text);
+      }
+      document.body.removeChild(ta);
     }
 
     function xuatExcel() {
       const truGaNo = parseFloat(document.getElementById('txtTruGaNo').value) || 0;
       const data = [
-        ["PHIẾU CÂN GÀ XUẤT BÁN", "", "", "", "", ""],
+        ["PHIẾU CÂN GÀ XUẤT BÁN", "", "", "", ""],
         ["Ngày:", document.getElementById('txtNgay').value, "", "Tổng lồng bì:", document.getElementById('resTongLongBi').innerText],
         ["Khách hàng:", document.getElementById('txtKhachHang').value, "", "TB 1 lồng:", document.getElementById('resTBLong').innerText],
         ["Số xe:", document.getElementById('txtSoXe').value, "", "Tổng Lồng + Gà:", document.getElementById('resTongCan').innerText],
         ["Số mã đã cân:", document.getElementById('resSoMaCan').innerText, "", "Tổng số con:", document.getElementById('resTongCon').innerText],
-        ["Tổng TL Gà (kg):", document.getElementById('resTongTLGa').innerText, "", "Trừ gà no (kg/con):", truGaNo.toFixed(3)],
-        ["Bình quân gốc:", document.getElementById('resTBConGoc').innerText.replace('Gốc: ', ''), "", "Bình quân sau trừ:", document.getElementById('resTBCon').innerText],
+        ["Tổng TL Gà gốc:", document.getElementById('resTongTLGaGoc').innerText.replace('Gốc: ', ''), "", "Trừ gà no (kg/con):", truGaNo.toFixed(3)],
+        ["TỔNG TL SAU TRỪ:", document.getElementById('resTongTLGa').innerText, "", "Bình quân gốc:", document.getElementById('resTBConGoc').innerText.replace('Gốc: ', '')],
+        ["", "", "", "BÌNH QUÂN SAU TRỪ:", document.getElementById('resTBCon').innerText],
         [],
-        ["STT", "Số Cân x 0.1", "Số Lồng", "Số Con", "TL Gà (kg)"]
+        ["1. CHI TIẾT CÂN LỒNG KHÔNG (BÌ)", "", "", "", ""],
+        ["STT", "TL Lồng x 0.1", "Số Lồng", "Thực tế (kg)", ""]
       ];
+
+      const rowsLong = document.querySelectorAll('#tblLong tbody tr');
+      rowsLong.forEach(row => {
+        const tl = row.querySelector('.input-tl-long').value;
+        if (tl) {
+          data.push([
+            row.querySelector('.col-stt').innerText,
+            tl,
+            row.querySelector('.input-sl-long').value,
+            row.querySelector('.cell-tt-long').innerText,
+            ""
+          ]);
+        }
+      });
+
+      data.push([]);
+      data.push(["2. CHI TIẾT CÂN GÀ (LỒNG + GÀ)", "", "", "", ""]);
+      data.push(["STT", "Số Cân x 0.1", "Số Lồng", "Số Con", "TL Gà (kg)"]);
 
       const rowsGa = document.querySelectorAll('#tblGa tbody tr');
       rowsGa.forEach(row => {
         const can = row.querySelector('.input-so-can').value;
-        if(can) {
+        if (can) {
+          // Lấy số kg thực tế không kèm chữ cảnh báo
+          const tlText = row.querySelector('.cell-tl-ga').childNodes[0].textContent.trim();
           data.push([
             row.querySelector('.col-stt').innerText,
             can,
             row.querySelector('.input-sl-long-ga').value,
             row.querySelector('.input-sl-con').value,
-            row.querySelector('.cell-tl-ga').innerText
+            tlText
           ]);
         }
       });
 
       const ws = XLSX.utils.aoa_to_sheet(data);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "CanGa");
+      XLSX.utils.book_append_sheet(wb, ws, "PhieuCanGa");
       XLSX.writeFile(wb, `CanGa_${document.getElementById('txtNgay').value || 'Moi'}.xlsx`);
     }
 
     function xoaTatCa() {
-      if (confirm("Bạn có chắc chắn muốn làm mới toàn bộ bảng tính?")) {
+      if (confirm("Bạn có chắc chắn muốn xóa sạch toàn bộ dữ liệu và làm phiếu mới?")) {
+        localStorage.removeItem(STORAGE_KEY);
+        document.getElementById('txtKhachHang').value = "";
+        document.getElementById('txtSoXe').value = "";
+        document.getElementById('txtMacDinhCon').value = "";
+        document.getElementById('txtTruGaNo').value = "";
         document.querySelector('#tblLong tbody').innerHTML = "";
         document.querySelector('#tblGa tbody').innerHTML = "";
-        document.getElementById('txtTruGaNo').value = "";
-        initData();
-        tinhToan();
+        initDefaultData();
+        showToast('Đã làm mới toàn bộ phiếu cân!');
       }
     }
 
-    initData();
+    khoiPhucDuLieu();
   </script>
 </body>
 </html>
