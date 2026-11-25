@@ -47,7 +47,7 @@
 
     .card { background: var(--card); border-radius: 8px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .grid-info { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-    @media (min-width: 650px) { .grid-info { grid-template-columns: repeat(5, 1fr); } }
+    @media (min-width: 650px) { .grid-info { grid-template-columns: repeat(3, 1fr); } }
 
     label { font-size: 11px; font-weight: bold; color: #555; display: block; margin-bottom: 2px; }
     input { width: 100%; padding: 10px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 16px; }
@@ -164,6 +164,10 @@
         <div>
           <label>Khách hàng</label>
           <input type="text" id="txtKhachHang" placeholder="Tên đối tác..." class="input-yellow" oninput="luuDuLieu()">
+        </div>
+        <div>
+          <label>SĐT khách hàng</label>
+          <input type="tel" inputmode="tel" autocomplete="off" id="txtSdtKhach" placeholder="vd: 0912 345 678" class="input-yellow" oninput="luuDuLieu()">
         </div>
         <div>
           <label>Số xe</label>
@@ -489,6 +493,7 @@
         const payload = {
           ngay: document.getElementById('txtNgay').value,
           khachHang: document.getElementById('txtKhachHang').value,
+          sdtKhach: document.getElementById('txtSdtKhach').value,
           soXe: document.getElementById('txtSoXe').value,
           macDinhLong: document.getElementById('txtMacDinhLong').value,
           macDinhCon: document.getElementById('txtMacDinhCon').value,
@@ -515,6 +520,7 @@
         const data = JSON.parse(raw);
         document.getElementById('txtNgay').value = data.ngay || homNay();
         document.getElementById('txtKhachHang').value = data.khachHang || '';
+        document.getElementById('txtSdtKhach').value = data.sdtKhach || '';
         document.getElementById('txtSoXe').value = data.soXe || '';
         document.getElementById('txtMacDinhLong').value = data.macDinhLong !== undefined ? data.macDinhLong : '1';
         document.getElementById('txtMacDinhCon').value = data.macDinhCon || '';
@@ -549,6 +555,7 @@
     function saoChepBaoCao() {
       const ngay = document.getElementById('txtNgay').value || '-';
       const kh = document.getElementById('txtKhachHang').value || '-';
+      const sdt = document.getElementById('txtSdtKhach').value || '-';
       const xe = document.getElementById('txtSoXe').value || '-';
       const soMa = document.getElementById('resSoMaCan').innerText;
       const tongCon = document.getElementById('resTongCon').innerText;
@@ -563,6 +570,7 @@
 `📋 BÁO CÁO CÂN GÀ XUẤT BÁN
 📅 Ngày: ${ngay}
 👤 Khách hàng: ${kh}
+📞 SĐT khách: ${sdt}
 🚚 Số xe: ${xe}
 ------------------------
 📦 TB 1 lồng (bì): ${tbLong}
@@ -613,7 +621,7 @@
         ["Số mã đã cân:", document.getElementById('resSoMaCan').innerText, "", "Tổng số con:", document.getElementById('resTongCon').innerText],
         ["Tổng TL Gà gốc:", document.getElementById('resTongTLGaGoc').innerText.replace('Gốc: ', ''), "", "Trừ gà no (kg/con):", truGaNo.toFixed(3)],
         ["TỔNG TL SAU TRỪ:", document.getElementById('resTongTLGa').innerText, "", "Bình quân gốc:", document.getElementById('resTBConGoc').innerText.replace('Gốc: ', '')],
-        ["", "", "", "BÌNH QUÂN SAU TRỪ:", document.getElementById('resTBCon').innerText],
+        ["SĐT khách:", document.getElementById('txtSdtKhach').value, "", "BÌNH QUÂN SAU TRỪ:", document.getElementById('resTBCon').innerText],
         [],
         ["1. CHI TIẾT CÂN LỒNG KHÔNG (BÌ)", "", "", "", ""],
         ["STT", "TL Lồng x 0.1", "Số Lồng", "Thực tế (kg)", ""]
@@ -663,6 +671,7 @@
       if (confirm("Bạn có chắc chắn muốn xóa sạch toàn bộ dữ liệu và làm phiếu mới?")) {
         localStorage.removeItem(STORAGE_KEY);
         document.getElementById('txtKhachHang').value = "";
+        document.getElementById('txtSdtKhach').value = "";
         document.getElementById('txtSoXe').value = "";
         document.getElementById('txtMacDinhLong').value = "1";
         document.getElementById('txtMacDinhCon').value = "";

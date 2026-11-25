@@ -1,5 +1,5 @@
 // Service worker: chạy offline. Đổi số phiên bản CACHE mỗi khi bạn cập nhật file trên GitHub.
-const CACHE = 'canga-v9';
+const CACHE = 'canga-v10';
 const XLSX_URL = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
 const PRECACHE = ['manifest.webmanifest', 'icon-192.png', 'icon-512.png', XLSX_URL];
 
